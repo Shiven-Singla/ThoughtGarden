@@ -593,6 +593,15 @@ body:not([data-night="1"]) .firefly{display:none!important;}
         <div><div class="settings-row-label">Export Memories</div><div class="settings-row-sub">Download as JSON</div></div>
         <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M4 15v2h12v-2"/></svg>
       </div>
+      <div class="settings-row" style="cursor:pointer" onclick="triggerImport()">
+        <div><div class="settings-row-label">Import Memories</div><div class="settings-row-sub">Restore from JSON backup</div></div>
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 17V7M6 11l4-4 4 4"/><path d="M4 15v2h12v-2"/></svg>
+      </div>
+      <div class="settings-row" style="cursor:pointer" onclick="confirmClearAll()">
+        <div><div class="settings-row-label" style="color:#e05a5a">Clear All Entries</div><div class="settings-row-sub">Permanently delete every memory</div></div>
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#e05a5a" stroke-width="1.8" stroke-linecap="round"><polyline points="5,5 15,15"/><polyline points="15,5 5,15"/></svg>
+      </div>
+      <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(event)">
     </div>
     <div class="settings-group">
       <div class="settings-group-label">Milestones</div>
@@ -651,6 +660,17 @@ body:not([data-night="1"]) .firefly{display:none!important;}
   <div id="plant-reveal-name" style="font-family:'Instrument Serif',serif;font-size:clamp(26px,6.5vw,36px);font-weight:400;margin-bottom:10px;color:#f0eeff;letter-spacing:.01em;"></div>
   <div id="plant-reveal-desc" style="font-size:clamp(13px,3.2vw,15px);color:rgba(240,238,255,.62);font-style:italic;line-height:1.7;max-width:300px;margin:0 auto 32px;"></div>
   <button class="btnp" style="max-width:220px;background:#f0eeff;color:#1a00cc;font-weight:600;" onclick="closePlantReveal()">See my garden →</button>
+</div>
+
+<!-- CLEAR ALL CONFIRM OVERLAY -->
+<div class="milestone-ov" id="clear-confirm-ov" style="cursor:default">
+  <div style="font-size:3rem;margin-bottom:16px">🌿</div>
+  <div style="font-family:'Instrument Serif',serif;font-size:clamp(22px,5.5vw,28px);color:#f0eeff;margin-bottom:10px">Clear your garden?</div>
+  <div style="font-size:clamp(13px,3.2vw,15px);color:rgba(240,238,255,.58);font-style:italic;line-height:1.7;max-width:280px;margin:0 auto 28px">Every memory, photo, and entry will be permanently removed. This cannot be undone.</div>
+  <div style="display:flex;gap:12px;width:100%;max-width:280px">
+    <button class="btng" style="flex:1;justify-content:center" onclick="document.getElementById('clear-confirm-ov').classList.remove('show')">Keep it</button>
+    <button class="btnp" style="flex:1;background:#e05a5a;color:#fff" onclick="executeClrAll()">Yes, clear all</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -760,6 +780,56 @@ const D=[
   {n:'Hyacinth',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="16"/><circle cx="20" cy="13" r="2.5"/><circle cx="15" cy="16" r="2.5"/><circle cx="25" cy="16" r="2.5"/><circle cx="13" cy="21" r="2.5"/><circle cx="27" cy="21" r="2.5"/><circle cx="14" cy="26" r="2.5"/><circle cx="26" cy="26" r="2.5"/><circle cx="17" cy="30" r="2.5"/><circle cx="23" cy="30" r="2.5"/><circle cx="20" cy="32" r="2.5"/></svg>`},
   {n:'Venus Fly Trap',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="26"/><path d="M12 26Q20 22 28 26M12 26Q12 17 20 15Q28 17 28 26"/><line x1="14" y1="22" x2="14" y2="18"/><line x1="17" y1="21" x2="17" y2="17"/><line x1="20" y1="21" x2="20" y2="15"/><line x1="23" y1="21" x2="23" y2="17"/><line x1="26" y1="22" x2="26" y2="18"/></svg>`},
   {n:'Vine',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 38Q10 30 14 24Q18 18 20 10Q22 18 26 24Q30 30 32 38" opacity=".4"/><path d="M10 32Q8 28 10 24Q13 20 16 22Q12 26 10 32M16 22Q14 18 17 14Q20 11 22 14Q19 17 16 22M22 14Q22 10 25 7Q28 5 29 9Q26 11 22 14M30 34Q32 30 30 26Q27 22 24 24Q28 28 30 34"/></svg>`},
+  {n:'Bleeding Heart',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="22"/><path d="M20 22Q14 16 12 10Q15 5 20 9Q25 5 28 10Q26 16 20 22Z" fill="currentColor" opacity=".18"/><line x1="20" y1="22" x2="20" y2="28"/><path d="M15 11Q20 8 25 11" opacity=".5"/></svg>`},
+  {n:'Passionflower',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="22"/><circle cx="20" cy="15" r="8"/><circle cx="20" cy="15" r="4" fill="currentColor" opacity=".18"/><circle cx="20" cy="15" r="1.5" fill="currentColor" opacity=".6"/><line x1="20" y1="7" x2="20" y2="4"/><line x1="27.7" y1="9.3" x2="29.8" y2="7.2"/><line x1="28" y1="15" x2="31" y2="15"/><line x1="27.7" y1="20.7" x2="29.8" y2="22.8"/><line x1="20" y1="23" x2="20" y2="26"/><line x1="12.3" y1="20.7" x2="10.2" y2="22.8"/><line x1="12" y1="15" x2="9" y2="15"/><line x1="12.3" y1="9.3" x2="10.2" y2="7.2"/><path d="M17 10Q20 7 23 10M24 13Q27 16 24 19M16 19Q13 16 16 13" opacity=".45"/></svg>`},
+  {n:'Protea',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><ellipse cx="20" cy="16" rx="9" ry="12"/><ellipse cx="20" cy="17" rx="5" ry="7" fill="currentColor" opacity=".2"/><line x1="11" y1="20" x2="8" y2="23"/><line x1="29" y1="20" x2="32" y2="23"/><line x1="13" y1="25" x2="11" y2="28"/><line x1="27" y1="25" x2="29" y2="28"/></svg>`},
+  {n:'Anemone',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><circle cx="20" cy="16" r="6"/><circle cx="20" cy="16" r="3.5" fill="currentColor" opacity=".35"/><ellipse cx="20" cy="8" rx="3" ry="5" transform="rotate(0 20 16)"/><ellipse cx="20" cy="8" rx="3" ry="5" transform="rotate(60 20 16)"/><ellipse cx="20" cy="8" rx="3" ry="5" transform="rotate(120 20 16)"/><ellipse cx="20" cy="8" rx="3" ry="5" transform="rotate(180 20 16)"/><ellipse cx="20" cy="8" rx="3" ry="5" transform="rotate(240 20 16)"/><ellipse cx="20" cy="8" rx="3" ry="5" transform="rotate(300 20 16)"/></svg>`},
+  {n:'Forget-Me-Not',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M10 34Q14 26 20 22Q26 18 30 10"/><circle cx="14" cy="20" r="3.5"/><circle cx="22" cy="14" r="3.5"/><circle cx="14" cy="20" r="1.2" fill="currentColor" opacity=".55"/><circle cx="22" cy="14" r="1.2" fill="currentColor" opacity=".55"/><circle cx="28" cy="12" r="3"/><circle cx="28" cy="12" r="1" fill="currentColor" opacity=".5"/></svg>`},
+  {n:'Snapdragon',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="8"/><path d="M20 14Q23 12 25 14Q24 18 20 17Q16 18 15 14Q17 12 20 14Z"/><path d="M20 20Q23 18 25 20Q24 24 20 23Q16 24 15 20Q17 18 20 20Z"/><path d="M20 26Q22 24 24 26Q23 29 20 28Q17 29 16 26Q18 24 20 26Z"/><path d="M20 32Q22 30 23 32Q22 35 20 34Q18 35 17 32Q18 30 20 32Z"/></svg>`},
+  {n:'Lisianthus',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><path d="M20 24Q13 22 11 15Q14 7 20 11Q26 7 29 15Q27 22 20 24Z" fill="currentColor" opacity=".15"/><path d="M15 22Q11 20 10 14" opacity=".5"/><path d="M25 22Q29 20 30 14" opacity=".5"/><path d="M20 11Q18 8 17 5M20 11Q22 8 23 5" opacity=".4"/></svg>`},
+  {n:'Columbine',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="26"/><path d="M20 26Q16 20 14 14Q17 9 20 13Q23 9 26 14Q24 20 20 26Z"/><path d="M14 14Q10 10 9 5M26 14Q30 10 31 5M20 13Q20 9 20 4" opacity=".45"/><circle cx="20" cy="16" r="2.5" fill="currentColor" opacity=".35"/></svg>`},
+  {n:'Hellebore',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="26"/><path d="M20 26Q14 24 12 17Q15 10 20 14Q25 10 28 17Q26 24 20 26Z" fill="currentColor" opacity=".14"/><circle cx="20" cy="18" r="3"/><circle cx="20" cy="18" r="1.2" fill="currentColor" opacity=".5"/><path d="M16 14Q12 12 11 8M24 14Q28 12 29 8" opacity=".4"/></svg>`},
+  {n:'Periwinkle',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 34Q12 26 18 22Q24 18 30 12"/><circle cx="16" cy="20" r="4"/><circle cx="16" cy="20" r="1.5" fill="currentColor" opacity=".45"/><ellipse cx="16" cy="15" rx="2" ry="3.5" transform="rotate(0 16 20)"/><ellipse cx="16" cy="15" rx="2" ry="3.5" transform="rotate(72 16 20)"/><ellipse cx="16" cy="15" rx="2" ry="3.5" transform="rotate(144 16 20)"/><ellipse cx="16" cy="15" rx="2" ry="3.5" transform="rotate(216 16 20)"/><ellipse cx="16" cy="15" rx="2" ry="3.5" transform="rotate(288 16 20)"/></svg>`},
+  {n:'Borage',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><circle cx="20" cy="16" r="5"/><circle cx="20" cy="16" r="2" fill="currentColor" opacity=".5"/><line x1="20" y1="11" x2="20" y2="8"/><line x1="24.3" y1="13.5" x2="26.6" y2="11.8"/><line x1="24.3" y1="18.5" x2="26.6" y2="20.2"/><line x1="20" y1="21" x2="20" y2="24"/><line x1="15.7" y1="18.5" x2="13.4" y2="20.2"/><line x1="15.7" y1="13.5" x2="13.4" y2="11.8"/></svg>`},
+  {n:'Sweet Pea',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 38Q13 30 19 24Q25 18 31 10"/><path d="M19 24Q15 19 17 13Q21 10 22 16Q25 11 29 12Q28 18 22 16" fill="currentColor" opacity=".14"/><path d="M14 32Q12 28 13 24" opacity=".4"/><path d="M19 24Q18 28 16 32" opacity=".35"/></svg>`},
+  {n:'Edelweiss',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><circle cx="20" cy="17" r="3" fill="currentColor" opacity=".4"/><ellipse cx="20" cy="10.5" rx="3" ry="4.5" transform="rotate(0 20 17)"/><ellipse cx="20" cy="10.5" rx="3" ry="4.5" transform="rotate(60 20 17)"/><ellipse cx="20" cy="10.5" rx="3" ry="4.5" transform="rotate(120 20 17)"/><ellipse cx="20" cy="10.5" rx="3" ry="4.5" transform="rotate(180 20 17)"/><ellipse cx="20" cy="10.5" rx="3" ry="4.5" transform="rotate(240 20 17)"/><ellipse cx="20" cy="10.5" rx="3" ry="4.5" transform="rotate(300 20 17)"/></svg>`},
+  {n:'Buttercup',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><circle cx="20" cy="17" r="3.5" fill="currentColor" opacity=".4"/><ellipse cx="20" cy="10" rx="2.5" ry="5" transform="rotate(0 20 17)"/><ellipse cx="20" cy="10" rx="2.5" ry="5" transform="rotate(72 20 17)"/><ellipse cx="20" cy="10" rx="2.5" ry="5" transform="rotate(144 20 17)"/><ellipse cx="20" cy="10" rx="2.5" ry="5" transform="rotate(216 20 17)"/><ellipse cx="20" cy="10" rx="2.5" ry="5" transform="rotate(288 20 17)"/></svg>`},
+  {n:'Lobelia',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="12"/><path d="M20 16Q17 14 16 11Q18 9 20 12M20 16Q23 14 24 11Q22 9 20 12M20 20Q17 18 15 16Q17 14 20 17M20 20Q23 18 25 16Q23 14 20 17M20 24Q17 22 14 21Q16 19 20 22M20 24Q23 22 26 21Q24 19 20 22M20 28Q17 27 13 26Q15 24 20 26M20 28Q23 27 27 26Q25 24 20 26"/></svg>`},
+  {n:'Agapanthus',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="18"/><circle cx="20" cy="13" r="2" fill="currentColor" opacity=".3"/><line x1="20" y1="11" x2="16" y2="5"/><line x1="20" y1="11" x2="24" y2="5"/><line x1="20" y1="10" x2="12" y2="8"/><line x1="20" y1="10" x2="28" y2="8"/><line x1="20" y1="12" x2="13" y2="16"/><line x1="20" y1="12" x2="27" y2="16"/><circle cx="16" cy="5" r="1.5" fill="currentColor" opacity=".5"/><circle cx="24" cy="5" r="1.5" fill="currentColor" opacity=".5"/><circle cx="12" cy="8" r="1.5" fill="currentColor" opacity=".4"/><circle cx="28" cy="8" r="1.5" fill="currentColor" opacity=".4"/><circle cx="13" cy="17" r="1.5" fill="currentColor" opacity=".4"/><circle cx="27" cy="17" r="1.5" fill="currentColor" opacity=".4"/></svg>`},
+  {n:'Statice',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="20"/><path d="M20 20Q16 16 12 12Q15 9 18 12M20 20Q24 16 28 12Q25 9 22 12M20 20Q16 17 10 16Q11 12 15 14M20 20Q24 17 30 16Q29 12 25 14M20 20Q19 15 18 10Q21 8 21 12M20 20Q21 15 22 10Q19 8 19 12"/><circle cx="12" cy="12" r="1.5" fill="currentColor" opacity=".5"/><circle cx="28" cy="12" r="1.5" fill="currentColor" opacity=".5"/><circle cx="10" cy="16" r="1.5" fill="currentColor" opacity=".45"/><circle cx="30" cy="16" r="1.5" fill="currentColor" opacity=".45"/></svg>`},
+  {n:'Zinnia',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><circle cx="20" cy="16" r="4" fill="currentColor" opacity=".3"/><ellipse cx="20" cy="8.5" rx="2.5" ry="4.5" transform="rotate(0 20 16)"/><ellipse cx="20" cy="8.5" rx="2.5" ry="4.5" transform="rotate(40 20 16)"/><ellipse cx="20" cy="8.5" rx="2.5" ry="4.5" transform="rotate(80 20 16)"/><ellipse cx="20" cy="8.5" rx="2.5" ry="4.5" transform="rotate(120 20 16)"/><ellipse cx="20" cy="8.5" rx="2.5" ry="4.5" transform="rotate(160 20 16)"/><ellipse cx="20" cy="8.5" rx="2.5" ry="4.5" transform="rotate(200 20 16)"/><ellipse cx="20" cy="8.5" rx="2.5" ry="4.5" transform="rotate(240 20 16)"/><ellipse cx="20" cy="8.5" rx="2.5" ry="4.5" transform="rotate(280 20 16)"/><ellipse cx="20" cy="8.5" rx="2.5" ry="4.5" transform="rotate(320 20 16)"/></svg>`},
+  {n:'Cosmos (Pink)',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="23"/><circle cx="20" cy="16" r="3" fill="currentColor" opacity=".4"/><ellipse cx="20" cy="9" rx="2.8" ry="5.5" transform="rotate(0 20 16)"/><ellipse cx="20" cy="9" rx="2.8" ry="5.5" transform="rotate(45 20 16)"/><ellipse cx="20" cy="9" rx="2.8" ry="5.5" transform="rotate(90 20 16)"/><ellipse cx="20" cy="9" rx="2.8" ry="5.5" transform="rotate(135 20 16)"/><ellipse cx="20" cy="9" rx="2.8" ry="5.5" transform="rotate(180 20 16)"/><ellipse cx="20" cy="9" rx="2.8" ry="5.5" transform="rotate(225 20 16)"/><ellipse cx="20" cy="9" rx="2.8" ry="5.5" transform="rotate(270 20 16)"/><ellipse cx="20" cy="9" rx="2.8" ry="5.5" transform="rotate(315 20 16)"/></svg>`},
+  {n:'Nigella',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="22"/><circle cx="20" cy="15" r="4"/><circle cx="20" cy="15" r="1.8" fill="currentColor" opacity=".4"/><ellipse cx="20" cy="8.5" rx="2" ry="4" transform="rotate(0 20 15)"/><ellipse cx="20" cy="8.5" rx="2" ry="4" transform="rotate(72 20 15)"/><ellipse cx="20" cy="8.5" rx="2" ry="4" transform="rotate(144 20 15)"/><ellipse cx="20" cy="8.5" rx="2" ry="4" transform="rotate(216 20 15)"/><ellipse cx="20" cy="8.5" rx="2" ry="4" transform="rotate(288 20 15)"/><path d="M13 10Q15 6 17 8M27 10Q25 6 23 8M13 20Q11 23 13 25M27 20Q29 23 27 25" opacity=".45" stroke-width="1"/></svg>`},
+  {n:'Allium',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="15"/><circle cx="20" cy="10" r="8"/><line x1="20" y1="2" x2="20" y2="5"/><line x1="27.7" y1="4.5" x2="26" y2="7"/><line x1="32" y1="10" x2="28.5" y2="10"/><line x1="27.7" y1="15.5" x2="26" y2="13"/><line x1="12.3" y1="15.5" x2="14" y2="13"/><line x1="8" y1="10" x2="11.5" y2="10"/><line x1="12.3" y1="4.5" x2="14" y2="7"/><circle cx="20" cy="2" r="1.2" fill="currentColor" opacity=".6"/><circle cx="27.7" cy="4.5" r="1.2" fill="currentColor" opacity=".55"/><circle cx="32" cy="10" r="1.2" fill="currentColor" opacity=".55"/></svg>`},
+  {n:'Delphinium',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="5"/><path d="M20 12Q23 10 25 12Q24 16 20 15Q16 16 15 12Q17 10 20 12Z" fill="currentColor" opacity=".2"/><path d="M20 18Q23 16 25 18Q24 22 20 21Q16 22 15 18Q17 16 20 18Z" fill="currentColor" opacity=".2"/><path d="M20 24Q23 22 24 24Q23 28 20 27Q17 28 16 24Q17 22 20 24Z" fill="currentColor" opacity=".18"/><path d="M20 30Q22 28 23 30Q22 33 20 32Q18 33 17 30Q18 28 20 30Z" fill="currentColor" opacity=".15"/><line x1="25" y1="12" x2="28" y2="9"/><line x1="25" y1="18" x2="29" y2="16"/><line x1="24" y1="24" x2="27" y2="22"/></svg>`},
+  {n:'Freesia',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 36Q13 28 16 22Q19 16 20 8"/><path d="M20 8Q22 5 24 8Q23 14 20 12Q17 14 16 8Q18 5 20 8Z"/><path d="M20 14Q22 12 24 14Q23 20 20 18Q17 20 16 14Q18 12 20 14Z" opacity=".7"/><path d="M20 20Q22 18 23 20Q22 26 20 24Q18 26 17 20Q18 18 20 20Z" opacity=".5"/><path d="M14 30Q11 33 10 36M16 26Q13 28 14 32" opacity=".4"/></svg>`},
+  {n:'Scabiosa',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="23"/><circle cx="20" cy="15" r="3" fill="currentColor" opacity=".35"/><circle cx="20" cy="15" r="6"/><ellipse cx="20" cy="8" rx="2" ry="4" transform="rotate(0 20 15)"/><ellipse cx="20" cy="8" rx="2" ry="4" transform="rotate(51 20 15)"/><ellipse cx="20" cy="8" rx="2" ry="4" transform="rotate(102 20 15)"/><ellipse cx="20" cy="8" rx="2" ry="4" transform="rotate(153 20 15)"/><ellipse cx="20" cy="8" rx="2" ry="4" transform="rotate(204 20 15)"/><ellipse cx="20" cy="8" rx="2" ry="4" transform="rotate(255 20 15)"/><ellipse cx="20" cy="8" rx="2" ry="4" transform="rotate(306 20 15)"/></svg>`},
+  {n:'Toadstool',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M14 24C14 38 26 38 26 24"/><path d="M10 24C10 12 30 12 30 24Z" fill="currentColor" opacity=".2"/><circle cx="17" cy="18" r="2.2" fill="currentColor" opacity=".45"/><circle cx="24" cy="16" r="1.7" fill="currentColor" opacity=".4"/><circle cx="21" cy="21" r="1.5" fill="currentColor" opacity=".35"/><line x1="17" y1="24" x2="17" y2="33"/><line x1="23" y1="24" x2="23" y2="33"/></svg>`},
+  {n:'Seed Head',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="20"/><circle cx="20" cy="18" r="3" fill="currentColor" opacity=".3"/><line x1="20" y1="15" x2="20" y2="9"/><line x1="20" y1="15" x2="14" y2="10"/><line x1="20" y1="15" x2="26" y2="10"/><line x1="20" y1="15" x2="12" y2="13"/><line x1="20" y1="15" x2="28" y2="13"/><line x1="20" y1="15" x2="12" y2="17"/><line x1="20" y1="15" x2="28" y2="17"/><line x1="20" y1="15" x2="15" y2="20"/><line x1="20" y1="15" x2="25" y2="20"/><circle cx="20" cy="8.5" r="1.3" fill="currentColor"/><circle cx="14" cy="9.5" r="1.3" fill="currentColor"/><circle cx="26" cy="9.5" r="1.3" fill="currentColor"/></svg>`},
+  {n:'Thistle',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="22"/><circle cx="20" cy="14" r="7"/><circle cx="20" cy="14" r="3.5" fill="currentColor" opacity=".25"/><line x1="13" y1="14" x2="9" y2="13"/><line x1="13" y1="11" x2="10" y2="8"/><line x1="16" y1="7" x2="15" y2="4"/><line x1="20" y1="7" x2="20" y2="4"/><line x1="24" y1="7" x2="25" y2="4"/><line x1="27" y1="11" x2="30" y2="8"/><line x1="27" y1="14" x2="31" y2="13"/></svg>`},
+  {n:'Sea Holly',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="20" y1="38" x2="20" y2="22"/><circle cx="20" cy="14" r="5" fill="currentColor" opacity=".2"/><path d="M20 9Q17 4 13 6Q15 10 20 9M20 9Q23 4 27 6Q25 10 20 9M15 18Q11 18 10 22Q14 21 15 18M25 18Q29 18 30 22Q26 21 25 18M13 13Q9 12 8 15Q11 16 13 13M27 13Q31 12 32 15Q29 16 27 13"/></svg>`},
+  {n:'Globe Thistle',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="19"/><circle cx="20" cy="13" r="7"/><line x1="20" y1="6" x2="20" y2="3"/><line x1="26" y1="8" x2="28.5" y2="6"/><line x1="28" y1="14" x2="31" y2="14"/><line x1="26" y1="20" x2="28.5" y2="22"/><line x1="14" y1="20" x2="11.5" y2="22"/><line x1="12" y1="14" x2="9" y2="14"/><line x1="14" y1="8" x2="11.5" y2="6"/></svg>`},
+  {n:'Ranunculus',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><circle cx="20" cy="16" r="8"/><circle cx="20" cy="16" r="5.5"/><circle cx="20" cy="16" r="3" fill="currentColor" opacity=".25"/><circle cx="20" cy="16" r="1.2" fill="currentColor" opacity=".55"/></svg>`},
+  {n:'Cornflower',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="23"/><circle cx="20" cy="15" r="3.5" fill="currentColor" opacity=".3"/><path d="M20 11Q17 7 14 8Q15 12 20 11M20 11Q23 7 26 8Q25 12 20 11M15 17Q11 17 11 21Q14 20 15 17M25 17Q29 17 29 21Q26 20 25 17M14 13Q11 10 11 7Q14 9 14 13M26 13Q29 10 29 7Q26 9 26 13"/></svg>`},
+  {n:'Penstemon',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="6"/><path d="M20 12Q23 10 25 13Q23 17 20 15Q17 17 15 13Q17 10 20 12Z" fill="currentColor" opacity=".2"/><path d="M20 18Q23 16 25 19Q23 23 20 21Q17 23 15 19Q17 16 20 18Z" fill="currentColor" opacity=".2"/><path d="M20 24Q23 22 24 25Q23 29 20 27Q17 29 16 25Q17 22 20 24Z" fill="currentColor" opacity=".18"/><line x1="25" y1="13" x2="29" y2="11"/><line x1="25" y1="19" x2="28" y2="17"/></svg>`},
+  {n:'Bleeding Grass',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="5"/><path d="M20 12Q16 10 13 6Q16 5 18 9M20 12Q24 10 27 6Q24 5 22 9M20 18Q15 16 11 13Q14 11 17 15M20 18Q25 16 29 13Q26 11 23 15M20 24Q15 22 10 20Q13 18 17 22M20 24Q25 22 30 20Q27 18 23 22M20 30Q14 28 9 27Q12 25 17 29M20 30Q26 28 31 27Q28 25 23 29"/></svg>`},
+  {n:'Astilbe',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="10"/><path d="M20 14Q17 11 14 8M20 14Q23 11 26 8M20 18Q16 15 12 13M20 18Q24 15 28 13M20 22Q15 19 10 18M20 22Q25 19 30 18M20 26Q15 24 10 24M20 26Q25 24 30 24M20 30Q16 28 13 29M20 30Q24 28 27 29"/><circle cx="14" cy="8" r="1" fill="currentColor" opacity=".6"/><circle cx="26" cy="8" r="1" fill="currentColor" opacity=".6"/><circle cx="12" cy="13" r="1" fill="currentColor" opacity=".5"/><circle cx="28" cy="13" r="1" fill="currentColor" opacity=".5"/></svg>`},
+  {n:'Foxbell',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="8"/><path d="M20 14Q16 11 15 7Q18 5 20 9M20 14Q24 11 25 7Q22 5 20 9"/><path d="M20 20Q16 17 14 13Q17 11 20 16M20 20Q24 17 26 13Q23 11 20 16"/><path d="M20 26Q15 23 13 19Q16 17 20 22M20 26Q25 23 27 19Q24 17 20 22"/><path d="M20 32Q14 29 12 25Q16 23 20 28M20 32Q26 29 28 25Q24 23 20 28"/></svg>`},
+  {n:'Trillium',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="28"/><path d="M20 28Q14 26 11 20Q15 14 20 18Q25 14 29 20Q26 26 20 28Z" fill="currentColor" opacity=".14"/><path d="M13 25Q8 26 7 30Q11 30 13 25M27 25Q32 26 33 30Q29 30 27 25M20 16Q20 11 20 7Q23 9 20 13Q17 9 20 13"/></svg>`},
+  {n:'Gentian',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="8"/><path d="M20 14Q17 12 16 8Q18 6 20 10Q22 6 24 8Q23 12 20 14Z" fill="currentColor" opacity=".25"/><path d="M20 20Q17 18 16 14Q18 12 20 16Q22 12 24 14Q23 18 20 20Z" fill="currentColor" opacity=".22"/><path d="M20 26Q17 24 16 20Q18 18 20 22Q22 18 24 20Q23 24 20 26Z" fill="currentColor" opacity=".18"/><path d="M20 32Q17 30 16 26Q18 24 20 28Q22 24 24 26Q23 30 20 32Z" fill="currentColor" opacity=".15"/></svg>`},
+  {n:'Phlox',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><circle cx="20" cy="16" r="3" fill="currentColor" opacity=".4"/><path d="M20 16Q17 9 16 5M20 16Q23 9 24 5M20 16Q12 14 9 11M20 16Q28 14 31 11M20 16Q13 20 11 24M20 16Q27 20 29 24"/><circle cx="16" cy="5" r="2.2"/><circle cx="24" cy="5" r="2.2"/><circle cx="9" cy="11" r="2.2"/><circle cx="31" cy="11" r="2.2"/><circle cx="11" cy="24" r="2.2"/><circle cx="29" cy="24" r="2.2"/></svg>`},
+  {n:'Coneflower',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="23"/><ellipse cx="20" cy="14" rx="4" ry="5" fill="currentColor" opacity=".35"/><ellipse cx="20" cy="9.5" rx="2.5" ry="5.5" transform="rotate(0 20 14)"/><ellipse cx="20" cy="9.5" rx="2.5" ry="5.5" transform="rotate(45 20 14)"/><ellipse cx="20" cy="9.5" rx="2.5" ry="5.5" transform="rotate(90 20 14)"/><ellipse cx="20" cy="9.5" rx="2.5" ry="5.5" transform="rotate(135 20 14)"/><ellipse cx="20" cy="9.5" rx="2.5" ry="5.5" transform="rotate(180 20 14)"/><ellipse cx="20" cy="9.5" rx="2.5" ry="5.5" transform="rotate(225 20 14)"/><ellipse cx="20" cy="9.5" rx="2.5" ry="5.5" transform="rotate(270 20 14)"/><ellipse cx="20" cy="9.5" rx="2.5" ry="5.5" transform="rotate(315 20 14)"/></svg>`},
+  {n:'Arrowhead',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="20" y1="38" x2="20" y2="18"/><path d="M20 18Q14 18 10 12Q14 5 20 9Q26 5 30 12Q26 18 20 18Z" fill="currentColor" opacity=".15"/><line x1="20" y1="9" x2="20" y2="18"/><path d="M14 17Q10 20 9 25M26 17Q30 20 31 25" opacity=".4"/></svg>`},
+  {n:'Nightshade',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 36Q13 28 18 22Q23 16 28 8"/><circle cx="16" cy="20" r="4" fill="currentColor" opacity=".22"/><circle cx="16" cy="20" r="4"/><line x1="14" y1="16" x2="12" y2="13"/><line x1="16" y1="16" x2="16" y2="13"/><line x1="18" y1="16" x2="20" y2="13"/><line x1="14" y1="24" x2="13" y2="27"/><line x1="18" y1="24" x2="19" y2="27"/><circle cx="13" cy="28" r="2" fill="currentColor" opacity=".5"/><circle cx="20" cy="28" r="2" fill="currentColor" opacity=".5"/></svg>`},
+  {n:'Spiderwort',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><circle cx="20" cy="17" r="4.5"/><circle cx="20" cy="17" r="2" fill="currentColor" opacity=".45"/><ellipse cx="20" cy="10.5" rx="2.8" ry="5" transform="rotate(0 20 17)"/><ellipse cx="20" cy="10.5" rx="2.8" ry="5" transform="rotate(120 20 17)"/><ellipse cx="20" cy="10.5" rx="2.8" ry="5" transform="rotate(240 20 17)"/></svg>`},
+  {n:'Ice Plant',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><circle cx="20" cy="15" r="3.5" fill="currentColor" opacity=".25"/><line x1="20" y1="11.5" x2="20" y2="8"/><line x1="20" y1="11.5" x2="23.5" y2="9"/><line x1="20" y1="11.5" x2="16.5" y2="9"/><line x1="20" y1="18.5" x2="20" y2="22"/><line x1="20" y1="18.5" x2="23.5" y2="21"/><line x1="20" y1="18.5" x2="16.5" y2="21"/><line x1="16.5" y1="12" x2="13" y2="10"/><line x1="23.5" y1="12" x2="27" y2="10"/><line x1="16.5" y1="18" x2="13" y2="20"/><line x1="23.5" y1="18" x2="27" y2="20"/></svg>`},
+  {n:'Torch Ginger',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="18"/><ellipse cx="20" cy="12" rx="6" ry="8" fill="currentColor" opacity=".2"/><ellipse cx="20" cy="12" rx="4" ry="6"/><path d="M14 16Q10 14 9 10Q12 7 14 11M26 16Q30 14 31 10Q28 7 26 11M17 8Q15 5 16 2M23 8Q25 5 24 2" opacity=".5"/></svg>`},
+  {n:'Wild Garlic',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="15"/><circle cx="20" cy="10" r="2"/><line x1="20" y1="8" x2="17" y2="4"/><line x1="20" y1="8" x2="23" y2="4"/><line x1="20" y1="8" x2="14" y2="6"/><line x1="20" y1="8" x2="26" y2="6"/><line x1="20" y1="9" x2="13" y2="9"/><line x1="20" y1="9" x2="27" y2="9"/><circle cx="17" cy="4" r="1.2" fill="currentColor" opacity=".6"/><circle cx="23" cy="4" r="1.2" fill="currentColor" opacity=".6"/><circle cx="14" cy="6" r="1.2" fill="currentColor" opacity=".5"/><circle cx="26" cy="6" r="1.2" fill="currentColor" opacity=".5"/><circle cx="13" cy="9" r="1.2" fill="currentColor" opacity=".5"/><circle cx="27" cy="9" r="1.2" fill="currentColor" opacity=".5"/></svg>`},
+  {n:'Fleabane',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="23"/><circle cx="20" cy="16" r="3" fill="currentColor" opacity=".4"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(0 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(20 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(40 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(60 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(80 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(100 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(120 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(140 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(160 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(180 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(200 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(220 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(240 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(260 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(280 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(300 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(320 20 16)"/><ellipse cx="20" cy="9.5" rx="1.5" ry="4.5" transform="rotate(340 20 16)"/></svg>`},
+  {n:'Briar Rose',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="25"/><circle cx="20" cy="18" r="5"/><circle cx="20" cy="18" r="2" fill="currentColor" opacity=".4"/><ellipse cx="20" cy="11" rx="3" ry="5.5" transform="rotate(0 20 18)"/><ellipse cx="20" cy="11" rx="3" ry="5.5" transform="rotate(72 20 18)"/><ellipse cx="20" cy="11" rx="3" ry="5.5" transform="rotate(144 20 18)"/><ellipse cx="20" cy="11" rx="3" ry="5.5" transform="rotate(216 20 18)"/><ellipse cx="20" cy="11" rx="3" ry="5.5" transform="rotate(288 20 18)"/><line x1="15" y1="30" x2="13" y2="34"/><line x1="25" y1="30" x2="27" y2="34"/><line x1="20" y1="31" x2="20" y2="35"/></svg>`},
+  {n:'Spider Lily',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="20"/><circle cx="20" cy="17" r="2.5" fill="currentColor" opacity=".4"/><line x1="20" y1="17" x2="20" y2="5"/><line x1="20" y1="17" x2="8" y2="13"/><line x1="20" y1="17" x2="32" y2="13"/><line x1="20" y1="17" x2="10" y2="24"/><line x1="20" y1="17" x2="30" y2="24"/><line x1="20" y1="17" x2="14" y2="28"/><line x1="20" y1="17" x2="26" y2="28"/><circle cx="20" cy="5" r="1.5" fill="currentColor" opacity=".55"/><circle cx="8" cy="13" r="1.5" fill="currentColor" opacity=".5"/><circle cx="32" cy="13" r="1.5" fill="currentColor" opacity=".5"/></svg>`},
+  {n:'Harebell',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><path d="M20 24Q16 24 14 19Q14 13 20 12Q26 13 26 19Q24 24 20 24Z" fill="currentColor" opacity=".16"/><path d="M20 12Q20 8 20 5M16 14Q12 12 11 8M24 14Q28 12 29 8" opacity=".45"/><circle cx="20" cy="18" r="1.5" fill="currentColor" opacity=".5"/></svg>`},
+  {n:'Oxeye Daisy',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><circle cx="20" cy="16" r="4.5" fill="currentColor" opacity=".3"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(0 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(30 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(60 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(90 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(120 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(150 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(180 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(210 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(240 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(270 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(300 20 16)"/><ellipse cx="20" cy="8" rx="2.2" ry="5" transform="rotate(330 20 16)"/></svg>`},
   // SEASONAL SPECIALS (12 unique — one per month)
   {n:'Snowdrop',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="18"/><path d="M20 18Q20 14 20 10"/><ellipse cx="20" cy="23" rx="4" ry="6" fill="currentColor" opacity=".15"/><path d="M16 22Q20 16 24 22Q20 28 16 22Z"/><path d="M18 12Q20 10 22 12"/><path d="M17 14Q20 12 23 14" opacity=".5"/></svg>`,seasonal:true},
   {n:'Violet',s:`<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="20" y1="38" x2="20" y2="24"/><ellipse cx="20" cy="18" rx="5" ry="8"/><ellipse cx="13" cy="20" rx="5" ry="7" transform="rotate(40 13 20)"/><ellipse cx="27" cy="20" rx="5" ry="7" transform="rotate(-40 27 20)"/><circle cx="20" cy="19" r="2.5" fill="currentColor" opacity=".4"/><path d="M15 34Q17 31 20 33"/></svg>`,seasonal:true},
@@ -853,6 +923,73 @@ const PLANT_DESC={
   'Daisy (Chamomile)':'Gentle and steady. Small comforts deserve to be written down.',
   'Water Lily':'Rooted below, floating above. Grounded in what you cannot always see.',
   'Clover (Four)':'Lucky by nature, but mostly because you were paying attention.',
+  'Bleeding Heart':'Love that bends gracefully under its own weight — still beautiful for it.',
+  'Edelweiss':'A rare thing that grows only where few dare to climb. You earned this view.',
+  'Thistle':'What others call stubborn, you call resilient. The purple crown is well-earned.',
+  'Snowflake Plant':'Symmetry repeated endlessly, never quite the same twice. Today was one of a kind.',
+  'Columbine':'Whimsical and gravity-defying. Some days delight you before you can explain why.',
+  'Lupine':'Stands tall in a column of color. Towers of small, earnest efforts.',
+  'Foxbell':'A bell that rings only in the wind. Listen — something is trying to reach you.',
+  'Passionflower':'Elaborate and layered. There is more complexity in this moment than it first appeared.',
+  'Fritillary':'Checkered and rare. Patterns only reveal themselves when you look closely.',
+  'Sea Holly':'Spiky on the outside, intricate at its heart. Not everything soft announces itself.',
+  'Sweet Pea':'Climbs upward, holding on gently. Some joy is found by leaning into what rises.',
+  'Anemone':'A dark center surrounded by open petals. Depth and openness are not opposites.',
+  'Camellia':'Immaculate and unhurried. Some things bloom with no fanfare and no apology.',
+  'Agapanthus':'A burst from a single point outward. What starts small can radiate far.',
+  'Spiderwort':'Grows in unexpected places and thrives anyway. Adaptability is quiet confidence.',
+  'Stargazer Lily':'Faces upward. Even in ordinary moments, something in you is reaching toward light.',
+  'Heather':'Covers whole hillsides in small gestures. Abundance through repetition.',
+  'Digitalis':'Tall and precise. Each bell holds its own particular silence.',
+  'Borage':'Star-shaped and blue. Traditionally, it brings courage. You had some today.',
+  'Allium':'A hundred small blooms on a single stem. Collective things can be extraordinary.',
+  'Night-Blooming Cereus':'Only opens in darkness. Some truths are only visible when the day has ended.',
+  'Gentian':'The deepest blue in nature. Some feelings are colors you cannot quite describe.',
+  'Verbena':'Clusters of small joys. Happiness doesn\'t always arrive in one large piece.',
+  'Phlox':'Cascades and spills. Some things are better when they overflow a little.',
+  'Cyclamen':'Turns its face backward as it opens. Sometimes growth means revisiting.',
+  'Forget-Me-Not':'Tiny and insistent. The small moments are the ones that last.',
+  'Hosta':'All leaf, no flower — and still magnificent. Sometimes the quiet ones hold the most.',
+  'Bleeding Grass':'Arches and bends in any breeze. Softness is a form of elegance.',
+  'Coneflower':'The center stands proud while the petals ease back. Confidence and release together.',
+  'Snowbell':'Hangs like a held breath before it rings. Waiting is its own kind of presence.',
+  'Trillium':'Three of everything: leaf, petal, time. Past, present, and what is still becoming.',
+  'Wood Sorrel':'Closes at night and opens again. Some things simply know when to rest.',
+  'Queen Anne Lace':'A constellation fallen to earth. The ordinary sky is full of stars.',
+  'Larkspur':'Stacks its blooms like careful thoughts. Not everything must arrive at once.',
+  'Shooting Star':'Petals swept back as if just landed. Something arrived today worth noticing.',
+  'Toadflax':'Small and particular. Grows in walls and cracks — finds beauty in the in-between.',
+  'Bugle':'A low, creeping carpet of color. Not all important things stand tall.',
+  'Thorn Bush':'Protects its sweetness behind sharp edges. Some things are worth the careful approach.',
+  'Sweetgrass':'Braided and sacred. What is woven together with care has a scent of its own.',
+  'Figwort':'Unassuming and useful. The quiet work is still work.',
+  'Plume Poppy':'Dramatic plumes above still roots. What rises up begins in stillness below.',
+  'Bee Balm':'Invites the whole garden community. You are better in relationship than in isolation.',
+  'Ghost Orchid':'Rare, elusive, and unforgettable. Some things you only glimpse once.',
+  'Jacob\'s Ladder':'Each rung a small step. You are higher than you realize from where you began.',
+  'Cosmos (Double)':'Layer upon layer of light. Some days deserve more than one look.',
+  'Sundew':'Glistens in the light and holds what comes to it. Softness can be a kind of strength.',
+  'Bat Flower':'Strange and magnificent. The unusual has its own particular beauty.',
+  'Rainbow Plant':'Each arc a different distance from the source. You contain more range than you know.',
+  'Bottle Brush':'Dense with small gestures, each one a flame. Warmth shown through accumulation.',
+  'Sedge':'Grows between water and land. You know how to inhabit the in-between.',
+  'Coleus':'More leaf than flower, and still vibrant. Color does not require occasion.',
+  'Pitcher Plant':'Holds what falls into it. Some days collect things you did not expect to keep.',
+  'Protea':'Ancient and otherworldly. Some things have been exactly themselves for a very long time.',
+  'Snapdragon':'Opens and closes like a conversation. You spoke, and it mattered.',
+  'Lisianthus':'Ruffled and soft at the edges. Complexity does not have to be sharp.',
+  'Hellebore':'Nods downward and still blooms. Quiet dignity in difficult conditions.',
+  'Periwinkle':'A gentle spiral unfurling. Things resolve if you give them enough turns.',
+  'Arrowhead':'Points upward with certainty. Direction is its own kind of peace.',
+  'Nightshade':'Beautiful and misunderstood. Not everything dangerous looks the part.',
+  'Ice Plant':'Crystalline at the edges. Even cold things can catch the light.',
+  'Torch Ginger':'Burns with its own particular warmth. Some things glow from the inside.',
+  'Wild Garlic':'Fills the air before it comes into view. Presence announces itself.',
+  'Fleabane':'More petals than seems necessary. There is no such thing as too generous.',
+  'Briar Rose':'Old and remembered. Some stories become more beautiful the longer they are told.',
+  'Spider Lily':'Reaches in all directions at once. Curiosity that does not collapse inward.',
+  'Harebell':'Rings in the gentlest breeze. You can hear it if you are quiet enough.',
+  'Oxeye Daisy':'Stands at roadsides and meadows alike. Beauty does not require a special occasion.',
 };
 function getPlantDesc(name){
   return PLANT_DESC[name]||'A quiet living thing. It grows, it reaches, it remembers light.';
@@ -1635,10 +1772,54 @@ async function nativeShare(){
    EXPORT
 ═══════════════════════════════════════════════════════ */
 function exportData(){
-  const json=JSON.stringify(E,null,2);
+  const payload={entries:E,settings:S,exportedAt:new Date().toISOString(),version:'thought-garden-v2'};
+  const json=JSON.stringify(payload,null,2);
   const blob=new Blob([json],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='thought-garden-export.json';a.click();
-  showToast('Exported');
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='thought-garden-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  showToast('Exported ✓');
+}
+
+function triggerImport(){
+  document.getElementById('import-file-input').click();
+}
+
+function handleImportFile(ev){
+  const file=ev.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      // Support both wrapped {entries,settings} and raw entries format
+      const imported=data.entries||data;
+      let count=0;
+      Object.keys(imported).forEach(k=>{
+        if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&imported[k]&&typeof imported[k]==='object'){
+          E[k]=imported[k];count++;
+        }
+      });
+      save_();
+      if(data.settings){}// preserve user's current settings
+      renderToday();renderGarden();
+      showToast('Imported '+count+' memor'+(count===1?'y':'ies')+' ✓');
+    }catch(err){
+      showToast('Could not read file');
+    }
+    ev.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function confirmClearAll(){
+  document.getElementById('clear-confirm-ov').classList.add('show');
+}
+
+function executeClrAll(){
+  E={};save_();
+  document.getElementById('clear-confirm-ov').classList.remove('show');
+  renderToday();renderGarden();
+  showToast('Garden cleared');
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1782,3 +1963,4 @@ document.getElementById('nav-search').addEventListener('click',()=>{setTimeout((
 
 </body>
 </html>
+ 
